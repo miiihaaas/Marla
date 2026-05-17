@@ -147,6 +147,11 @@ def send_email(msg: EmailMessage) -> None:
         raise RuntimeError("SMTP konfiguracija nije kompletna (proveri .env / cPanel env varijable).")
 
     context = ssl.create_default_context()
+    if env("SMTP_INSECURE_TLS").lower() == "true":
+        # Shared cPanel/a2 hosting cert chains often nisu RFC 5280 strict-compliant.
+        # Python 3.13+ ih odbija po defaultu — ovaj flag opušta samo strict X509 mod
+        # (konekcija i dalje TLS-enkriptovana, cert se i dalje verifikuje).
+        context.verify_flags &= ~ssl.VERIFY_X509_STRICT
     with smtplib.SMTP_SSL(host, port, context=context, timeout=30) as smtp:
         smtp.login(user, password)
         smtp.send_message(msg)
