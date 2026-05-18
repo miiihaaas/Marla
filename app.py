@@ -152,9 +152,20 @@ def send_email(msg: EmailMessage) -> None:
         # Python 3.13+ ih odbija po defaultu — ovaj flag opušta samo strict X509 mod
         # (konekcija i dalje TLS-enkriptovana, cert se i dalje verifikuje).
         context.verify_flags &= ~ssl.VERIFY_X509_STRICT
-    with smtplib.SMTP_SSL(host, port, context=context, timeout=30) as smtp:
+
+    # Port 465 = implicit SSL (SMTP_SSL). Port 587 = plain + STARTTLS. Port 25 = plain.
+    if port == 465:
+        smtp = smtplib.SMTP_SSL(host, port, context=context, timeout=30)
+    else:
+        smtp = smtplib.SMTP(host, port, timeout=30)
+        if port == 587:
+            smtp.starttls(context=context)
+
+    try:
         smtp.login(user, password)
         smtp.send_message(msg)
+    finally:
+        smtp.quit()
 
 
 @app.route("/")
